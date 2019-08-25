@@ -2,8 +2,8 @@ from math import pi
 
 import curses
 import math
-
 import os
+
 if os.path.exists("log"):
     os.remove("log")
 
@@ -12,10 +12,10 @@ screen.nodelay(1)
 curses.cbreak()
 curses.noecho()
 
-x_width, y_width = 16, 16
+width, height = 16, 16
 screen_height, screen_width = screen.getmaxyx()
 screen_height -= 1
-player_x, player_y = 14, 1
+player_x, player_y = 7.3, 10
 player_a = pi / 2
 view_angle = pi / 4
 MAX_DIST = 16
@@ -68,13 +68,12 @@ def dist_to_wall(x: float, y: float, angle: float) -> float:
         _x = int( player_x + dx * distance )
         _y = int( player_y + dy * distance )
 
-        if _x < 0 or _x >= x_width or _y < 0 or _y >= y_width:
+        if _x < 0 or _x >= width or _y < 0 or _y >= height:
             distance = MAX_DIST
             hit_wall = True
         else:
             if grid_map[_y][_x] == '#':
                 hit_wall = True
-                log(f"y, x : {_y}, {_x}")
 
     return distance
 
@@ -104,29 +103,57 @@ def get_wall(ratio: float):
     else:
         return '\u2588'
 
+def in_map(x: int, y: int) -> bool:
+    return 0 <= x and x < width and 0 <= y and y < height
+
 if __name__ == "__main__":
-        # c = screen.getch()
-    for i in range(screen_width):
-        angle = ( player_a - view_angle / 2 ) + i / screen_width * view_angle
+    while True:
+        ch_in = screen.getch()
+        if ch_in == ord("l"):
+            player_a += 0.05
 
-        dist = dist_to_wall(player_x, player_y, angle)
-        ratio = (1 - dist / MAX_DIST)
-        wall_type = get_wall(ratio)
+        elif ch_in == ord("j"):
+            player_a -= 0.05
 
-        n_wall = int(screen_height * ratio)
-        n_floor = (screen_height - n_wall) // 2
-        n_ceiling = screen_height - n_wall - n_floor
+        elif ch_in == ord("i"):
+            player_x += 0.1 * math.cos(player_a)
+            player_y += 0.1 * math.sin(player_a)
 
-        for j in range(n_ceiling):
-            screen.addstr(j, i, " ")
+            if not in_map(int(player_x), int(player_y)) or grid_map[int(player_y)][int(player_x)] == "#":
+                player_x -= 0.1 * math.cos(player_a)
+                player_y -= 0.1 * math.sin(player_a)
 
-        for j in range(n_wall):
-            screen.addstr(n_ceiling + j, i, wall_type)
+        elif ch_in == ord("k"):
+            player_x -= 0.1 * math.cos(player_a)
+            player_y -= 0.1 * math.sin(player_a)
 
-        for j in range(n_floor):
-            screen.addstr(n_ceiling + n_wall + j, i, get_floor(n_ceiling + n_wall + j))
+            if not in_map(int(player_x), int(player_y)) or grid_map[int(player_y)][int(player_x)] == "#":
+                player_x += 0.1 * math.cos(player_a)
+                player_y += 0.1 * math.sin(player_a)
 
-    screen.refresh()
+        elif ch_in == ord("q"):
+            break
 
-    curses.napms(3000)
+        for i in range(screen_width):
+            angle = ( player_a - view_angle / 2 ) + i / screen_width * view_angle
+
+            dist = dist_to_wall(player_x, player_y, angle)
+            ratio = (1 - dist / MAX_DIST)
+            wall_type = get_wall(ratio)
+
+            n_floor = int(screen_height // 2 * ( 1 - ratio ))
+            n_ceiling = n_floor
+            n_wall = screen_height - n_floor * 2
+
+            for j in range(n_ceiling):
+                screen.addstr(j, i, " ")
+
+            for j in range(n_wall):
+                screen.addstr(n_ceiling + j, i, wall_type)
+
+            for j in range(n_floor):
+                screen.addstr(n_ceiling + n_wall + j, i, get_floor(n_ceiling + n_wall + j))
+
+        screen.refresh()
+
     curses.endwin()
